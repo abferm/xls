@@ -1,8 +1,10 @@
 package xls
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/extrame/ole2"
 )
@@ -36,24 +38,18 @@ func OpenReader(reader io.ReadSeeker, charset string) (wb *WorkBook, err error) 
 			var root *ole2.File
 			for _, file := range dir {
 				name := file.Name()
-				if name == "Workbook" {
-					if book == nil {
-						book = file
-					}
-					//book = file
-					// break
-				}
-				if name == "Book" {
+				switch strings.ToUpper(name) {
+				case "WORKBOOK", "BOOK":
 					book = file
-					// break
-				}
-				if name == "Root Entry" {
+				case "ROOT ENTRY":
 					root = file
 				}
 			}
-			if book != nil {
-				wb = newWorkBookFromOle2(ole.OpenFile(book, root))
+			if book == nil {
+				err = fmt.Errorf("Unable to find workbook")
 				return
+			} else {
+				wb = newWorkBookFromOle2(ole.OpenFile(book, root))
 			}
 		}
 	}
