@@ -18,6 +18,10 @@ type contentHandler interface {
 	LastCol() uint16
 }
 
+type CanDate interface {
+	ToDate(*WorkBook) time.Time
+}
+
 type Col struct {
 	RowB      uint16
 	FirstColB uint16
@@ -48,6 +52,10 @@ type XfRk struct {
 	Rk    RK
 }
 
+func (xf *XfRk) ToDate(wb *WorkBook) time.Time {
+	return xf.Rk.ToDate(wb)
+}
+
 func (xf *XfRk) String(wb *WorkBook) string {
 	idx := int(xf.Index)
 	if len(wb.Xfs) > idx {
@@ -58,22 +66,14 @@ func (xf *XfRk) String(wb *WorkBook) string {
 					//If format contains # or .00 then this is a number
 					return xf.Rk.String()
 				} else {
-					i, f, isFloat := xf.Rk.number()
-					if !isFloat {
-						f = float64(i)
-					}
-					t := timeFromExcelTime(f, wb.dateMode == 1)
+					t := xf.ToDate(wb)
 
 					return yymmdd.Format(t, formatter.str)
 				}
 			}
 			// see http://www.openoffice.org/sc/excelfileformat.pdf Page #174
 		} else if 14 <= fNo && fNo <= 17 || fNo == 22 || 27 <= fNo && fNo <= 36 || 50 <= fNo && fNo <= 58 { // jp. date format
-			i, f, isFloat := xf.Rk.number()
-			if !isFloat {
-				f = float64(i)
-			}
-			t := timeFromExcelTime(f, wb.dateMode == 1)
+			t := xf.ToDate(wb)
 			return t.Format(time.RFC3339) //TODO it should be international
 		}
 	}
@@ -81,6 +81,14 @@ func (xf *XfRk) String(wb *WorkBook) string {
 }
 
 type RK uint32
+
+func (rk *RK) ToDate(wb *WorkBook) time.Time {
+	i, f, isFloat := rk.number()
+	if !isFloat {
+		f = float64(i)
+	}
+	return timeFromExcelTime(f, wb.dateMode == 1)
+}
 
 func (rk RK) number() (intNum int64, floatNum float64, isFloat bool) {
 	multiplied := rk & 1
@@ -161,6 +169,10 @@ type NumberCol struct {
 	Float float64
 }
 
+func (c *NumberCol) ToDate(wb *WorkBook) time.Time {
+	return timeFromExcelTime(c.Float, wb.dateMode == 1)
+}
+
 func (c *NumberCol) String(wb *WorkBook) []string {
 	return []string{strconv.FormatFloat(c.Float, 'f', -1, 64)}
 }
@@ -183,6 +195,10 @@ func (c *FormulaCol) String(wb *WorkBook) []string {
 type RkCol struct {
 	Col
 	Xfrk XfRk
+}
+
+func (c *RkCol) ToDate(wb *WorkBook) time.Time {
+	return c.Xfrk.ToDate(wb)
 }
 
 func (c *RkCol) String(wb *WorkBook) []string {

@@ -1,5 +1,10 @@
 package xls
 
+import (
+	"fmt"
+	"time"
+)
+
 type rowInfo struct {
 	Index    uint16
 	Fcell    uint16
@@ -33,6 +38,22 @@ func (r *Row) Col(i int) string {
 		}
 	}
 	return ""
+}
+
+//Col Get the Nth Col from the Row, if has not, return nil.
+//Suggest use Has function to test it.
+func (r *Row) DateCol(i int) (date time.Time, err error) {
+	serial := uint16(i)
+	if ch, ok := r.cols[serial]; ok {
+		if canDate, ok := ch.(CanDate); ok {
+			date = canDate.ToDate(r.wb)
+		} else {
+			err = fmt.Errorf("Unsupported cell (%d: %T)", i, ch)
+		}
+	} else {
+		err = fmt.Errorf("Cell not found (%d)", i)
+	}
+	return
 }
 
 //LastCol Get the number of Last Col of the Row.
